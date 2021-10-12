@@ -6,11 +6,14 @@ from dash.dependencies import Input, Output
 #cyto.load_extra_layouts()
 
 import dash_bootstrap_components as dbc
+from dash import callback_context
 
 # Connect to main app.py file
 from app import app
 #from app import server
 from apps import cyto_compound
+from apps import backend_dataset
+from apps import additional_filters
 
 #import dash_cytoscape as cyto
 #cyto.load_extra_layouts()
@@ -18,7 +21,8 @@ from apps import cyto_compound
 
 app.layout = html.Div(
     [
-        dcc.Store(id='store_cyto_compound',data={}),
+        #storage_type='session',
+        dcc.Store(id='store_cyto_compound'),
         
         dbc.Row(
             #for the moment, we put all in one column
@@ -30,7 +34,8 @@ app.layout = html.Div(
                     children=[
                         dcc.Location(id='url',pathname='',refresh=False),
                         dcc.Link('Compounds',href='/apps/cyto_compound'),
-                        dcc.Link('Backend Dataset',href='/apps/backend_dataset')
+                        dcc.Link('Backend Dataset',href='/apps/backend_dataset'),
+                        dcc.Link('Additional Filters',href='/apps/additional_filters')
                     ]
                 ),
 
@@ -53,7 +58,16 @@ app.layout = html.Div(
 )
 def display_page(temp_pathname):
     if temp_pathname == '/apps/cyto_compound':
+        #print('\n in link chooser')
+        #print(callback_context.triggered)
+        
         return [cyto_compound.layout]
+    elif temp_pathname == '/apps/backend_dataset':
+        return [backend_dataset.layout]
+    elif temp_pathname == '/apps/additional_filters':
+        return [additional_filters.layout]
+
+
     else:
         return 'under construction'
 

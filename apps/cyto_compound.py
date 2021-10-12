@@ -2,28 +2,29 @@
 import dash_bootstrap_components as dbc
 from dash import html
 import dash_cytoscape as cyto
-from dash.dependencies import Input, Output, State, ALL
+from dash.dependencies import Input, Output, State, ALL, MATCH
+from dash.exceptions import PreventUpdate
+from dash import callback_context
 
+from itertools import chain
+import networkx as nx
 import pathlib
 import json
 from pprint import pprint
+import fnmatch
 
 from app import app
-
 
 cyto.load_extra_layouts()
 
 PATH = pathlib.Path(__file__).parent
 DATA_PATH = PATH.joinpath("../datasets").resolve()
 
-
-
 compound_json_address=DATA_PATH.joinpath('cyto_format_compound.json')
 temp_json_file=open(compound_json_address,'r')
 compound_network_dict=json.load(temp_json_file)
 temp_json_file.close()
-#the point of this is to add a property that we display.
-##we could preprocess this once if we so desired
+
 for temp_element in compound_network_dict['elements']['nodes']:
     #id and label are special keys for cytoscape dicts
     #they are always expected. our conversion script makes the id but does not make the name
@@ -34,9 +35,8 @@ for temp_element in compound_network_dict['elements']['nodes']:
         temp_element['data']['label']=temp_element['data']['name']
     
     ##temp_element['selectable']=True
-    ##temp_element['classes']='not_selected'
+    temp_element['classes']='not_selected'
     #temp_element['data']['label']=replace_space_with_newline(temp_element['data']['label'])
-
 
 stylesheet=[
     {
@@ -48,7 +48,7 @@ stylesheet=[
             'font-size':13
         }
         
-    }
+    },
     # {
     #     'selector':'.selected',
     #     'style':{
@@ -56,11 +56,22 @@ stylesheet=[
     #     }
     # }
     #'text-wrap':'wrap'
+    {
+        'selector':'.selected',
+        'style':{
+            'background-color':'red'
+        }
+    },
+    {
+        'selector':'.not_selected',
+        'style':{
+            'background-color':'grey'
+        }
+    }
 ]
 
-
-
-
+networkx_address=DATA_PATH.joinpath('compounds_networkx.bin')
+networkx=nx.readwrite.gpickle.read_gpickle(networkx_address)
 
 layout=html.Div(
     children=[
@@ -85,42 +96,40 @@ layout=html.Div(
         html.Div(
             id='div_cytoscape_compound_cyto',
             children=[]
-        )
-
+        ),
+        html.Div(    
+            children=[
+                dbc.Row(
+                    dbc.Col(
+                        #html.Div(
+                        children=[
+                            html.Button('bs button', id='bs button', n_clicks=0),
+                        ],
+                        #),
+                        width='auto',
+                        align='center'
+                    )
+                ),
+            ]
+        ),
     ]
 )
 
-        # dbc.Row(
-        #     dbc.Col(
-        #         dbc.Card(
-        #             children=[
-        #                 #compounds
-        #                 cyto.Cytoscape(
-        #                     id='cytoscape_compound',
-        #                     layout={'name':'breadthfirst'},
-        #                     elements=compound_network_dict['elements'],
-        #                     stylesheet=stylesheet,
-        #                     minZoom=0.3,
-        #                     maxZoom=5
-        #                 )
-        #             ]
-        #         ),
-        #         width='auto',
-        #         align='center'
-        #     )
 
-        # )
 
 @app.callback(
     [Output(component_id='div_cytoscape_compound_cyto',component_property='children')],
     #gets n_clicks=0 when app loads, thats why you get a cyto right off the bat
     [Input(component_id='button_add_cyto_compound',component_property='n_clicks')],
-    [State(component_id='div_cytoscape_compound_cyto',component_property='children')]
+    [State(component_id='div_cytoscape_compound_cyto',component_property='children'),
+    State(component_id='store_cyto_compound',component_property='data')],prevent_initial_callback=True
 )
-def add_cyto_compound(temp_n_clicks,temp_children):
+def add_cyto_compound(temp_n_clicks,temp_children,temp_store):
 
-    #pprint(temp_children)
-    
+    print('\nadd_cyto_compound')
+    print(callback_context.triggered[0]['prop_id'])
+    print(temp_store)
+
     new_graph=dbc.Row(
         dbc.Col(
             dbc.Card(
@@ -131,7 +140,7 @@ def add_cyto_compound(temp_n_clicks,temp_children):
                             'type':'cytoscape_compound',
                             'key':temp_n_clicks
                         },
-                        layout={'name':'breadthfirst'},
+                        layout={'name':'dagre'},
                         elements=compound_network_dict['elements'],
                         stylesheet=stylesheet,
                         minZoom=0.3,
@@ -144,16 +153,113 @@ def add_cyto_compound(temp_n_clicks,temp_children):
         )
     )
 
-    temp_children.append(new_graph)
 
+    # if (callback_context.triggered[0]['prop_id']=='.'):
+    #     for element in temp_store:
+    #         temp_children.append(new_graph)
+    # elif (callback_context.triggered[0]['prop_id']=='button_add_cyto_compound.n_clicks'):
+    #     temp_children.append(new_graph)
+    temp_children.append(new_graph)
     return [temp_children]
 
 @app.callback(
-    [Output(component_id='store_cyto_compound',component_property='data')],
-    [Input(component_id={'type':'cytoscape_compound','key':ALL},component_property='tapNodeData')],
-    [State(component_id='store_cyto_compound',component_property='data')]
+    [Output(component_id={'type':'cytoscape_compound','key':MATCH},component_property='elements')],
+    [Input(component_id={'type':'cytoscape_compound','key':MATCH},component_property='tapNodeData')],
+    #Input(component_id='button_add_cyto_compound',component_property='n_clicks')],
+    #Input(component_id='Compounds',component_property='href')],
+    [State(component_id={'type':'cytoscape_compound','key':MATCH},component_property='elements'),
+    State(component_id='store_cyto_compound',component_property='data')]#,prevent_initial_call=True
 )
-def test_store(temp_tap,temp_state):
-    print('--------')
+def update_node_selection(temp_tap,temp_elements,temp_store):
+
+    print('\nupdate_node_selection')
+    #print(temp_clicks)
     print(temp_tap)
-    print(temp_state)
+    print(callback_context.triggered[0]['prop_id'])
+    print(callback_context.inputs_list)
+
+    if temp_tap is None:
+        raise PreventUpdate
+
+    elif callback_context.triggered[0]['prop_id']=='.':
+        raise PreventUpdate
+
+    try:
+        child_nodes_and_self=nx.algorithms.dag.descendants(networkx,temp_tap['id'])
+    except nx.NetworkXError:
+        child_nodes_and_self=set()
+
+    child_nodes_and_self.add(temp_tap['id'])
+
+    child_nodes_and_self=set(map(str,child_nodes_and_self))
+
+    for temp_node in temp_elements['nodes']:
+
+        if temp_node['data']['id'] in child_nodes_and_self:
+
+
+            if temp_node['classes']=='selected':
+                temp_node['classes']='not_selected'
+            elif temp_node['classes']=='not_selected':
+                temp_node['classes']='selected'
+
+    return [temp_elements]
+
+
+def check_if_selected(temp_dict):
+
+    if temp_dict['classes']=='selected':
+        return str(temp_dict['data']['id'])
+
+
+@app.callback(
+    [Output(component_id='store_cyto_compound',component_property='data')],
+    [Input(component_id={'type':'cytoscape_compound','key':ALL},component_property='elements')],
+    [State(component_id='store_cyto_compound',component_property='data')]
+    #,prevent_initial_call=True
+)
+def add_selections_to_store(temp_elements,temp_store):
+    '''
+    I don't think that there is an objective "right" way to store data into store object
+
+    for now, for compounds, we will store the id if the corresponding
+    '''
+    '''
+    [{'edges': [{'data': {'id': '4dafba22-5f39-47ec-b080-960e845e8389',
+                      'key': 0,
+
+      'nodes': [{'classes': 'not_selected',
+             'data': {'def': '"Compounds that contain at least carbon atom, '
+                             'excluding isocyanide/cyanide and their '
+                             'non-hydrocarbyl derivatives, thiophosgene, '
+                             'carbon diselenide, carbon monosulfide, carbon '
+                             'disulfide, carbon subsulfide, carbon monoxide, '
+                             'carbon trioxide, Carbon suboxide, and dicarbon '
+                             'monoxide." []',
+                      'id': 'CHEMONTID:0000000',
+
+    }]
+    '''
+
+
+
+    print('\nadd_selections_to_store')
+    print(callback_context.triggered[0]['prop_id'])
+
+    if callback_context.triggered[0]['prop_id']=='.':
+        raise PreventUpdate
+
+    selected_ids_list=[list(map(check_if_selected,temp_cyto_dict['nodes'])) for temp_cyto_dict in temp_elements]
+
+    
+    return [selected_ids_list]
+
+
+'''
+@app.callback(
+    [Output(component_id='bs button',component_property='n_clicks')],
+    [Input(component_id='page_content',component_property='children')]
+)
+def display_page(temp_pathname):
+    print('in bs button')
+'''

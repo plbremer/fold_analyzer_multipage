@@ -1,9 +1,6 @@
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
-#had to import cyto here to use dagre...?
-#import dash_cytoscape as cyto
-#cyto.load_extra_layouts()
 
 import dash_bootstrap_components as dbc
 from dash import callback_context
@@ -15,8 +12,6 @@ from apps import cyto_compound
 from apps import backend_dataset
 from apps import additional_filters
 
-#import dash_cytoscape as cyto
-#cyto.load_extra_layouts()
 
 
 app.layout = html.Div(
@@ -30,7 +25,6 @@ app.layout = html.Div(
             #just put one of each link into a different column
             dbc.Col(
                 html.Div(
-                    #id='link_list',
                     children=[
                         dcc.Location(id='url',pathname='',refresh=False),
                         dcc.Link('Compounds',href='/apps/cyto_compound'),
@@ -58,9 +52,6 @@ app.layout = html.Div(
 )
 def display_page(temp_pathname):
     if temp_pathname == '/apps/cyto_compound':
-        #print('\n in link chooser')
-        #print(callback_context.triggered)
-        
         return [cyto_compound.layout]
     elif temp_pathname == '/apps/backend_dataset':
         return [backend_dataset.layout]
@@ -71,35 +62,6 @@ def display_page(temp_pathname):
     else:
         return 'under construction'
 
-
-    # @dcc.Location(id='url', refresh=False),
-    # html.Div([
-    #     dcc.Link('Video Games|', href='/apps/vgames'),
-    #     dcc.Link('Other Products', href='/apps/global_sales'),
-    # ], className="row"),
-    #    html.Div(id='page-content', children=[])
-#])
-
-'''
-app.layout=html.Div(
-    [
-        #title
-        dbc.Row(
-            dbc.Col(
-                html.Div(
-                    children=[
-                        #a header
-                        html.H1('Binvestigate Fold Analyzer'),
-                        html.Br(),
-                        html.Br(),
-                        html.Br()
-                    ]
-                ),
-                width='auto',
-            ),
-            justify='center'
-        ),
-'''
 
 if __name__ == '__main__':
     app.run_server(debug=True)

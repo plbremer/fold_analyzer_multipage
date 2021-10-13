@@ -24,7 +24,6 @@ compound_json_address=DATA_PATH.joinpath('cyto_format_compound.json')
 temp_json_file=open(compound_json_address,'r')
 compound_network_dict=json.load(temp_json_file)
 temp_json_file.close()
-
 for temp_element in compound_network_dict['elements']['nodes']:
     #id and label are special keys for cytoscape dicts
     #they are always expected. our conversion script makes the id but does not make the name
@@ -34,9 +33,8 @@ for temp_element in compound_network_dict['elements']['nodes']:
     except KeyError:
         temp_element['data']['label']=temp_element['data']['name']
     
-    ##temp_element['selectable']=True
     temp_element['classes']='not_selected'
-    #temp_element['data']['label']=replace_space_with_newline(temp_element['data']['label'])
+
 
 stylesheet=[
     {
@@ -77,22 +75,13 @@ layout=html.Div(
     children=[
         dbc.Row(
             dbc.Col(
-                #html.Div(
                 children=[
                     html.Button('add compound cyto', id='button_add_cyto_compound', n_clicks=0),
                 ],
-                #),
                 width='auto',
                 align='center'
             )
         ),
-        #dbc.Row(
-        #    dbc.Col(
-        #        children=[
-
-        #        ]
-        #    )
-        #)
         html.Div(
             id='div_cytoscape_compound_cyto',
             children=[]
@@ -101,11 +90,9 @@ layout=html.Div(
             children=[
                 dbc.Row(
                     dbc.Col(
-                        #html.Div(
                         children=[
                             html.Button('bs button', id='bs button', n_clicks=0),
                         ],
-                        #),
                         width='auto',
                         align='center'
                     )
@@ -126,40 +113,39 @@ layout=html.Div(
 )
 def add_cyto_compound(temp_n_clicks,temp_children,temp_store):
 
-    print('\nadd_cyto_compound')
-    print(callback_context.triggered[0]['prop_id'])
-    print(temp_store)
+    if (callback_context.triggered[0]['prop_id']=='.'):
+        for i,element in enumerate(temp_store):
+            new_graph=dbc.Row(
+                dbc.Col(
+                    dbc.Card(
+                        children=[
+                            #compounds
+                            cyto.Cytoscape(
+                                id={
+                                    'type':'cytoscape_compound',
+                                    'key':i
+                                },
+                                layout={'name':'dagre'},
+                                elements=compound_network_dict['elements'],
+                                stylesheet=stylesheet,
+                                minZoom=0.3,
+                                maxZoom=5
+                            )
+                        ]
+                    ),
+                    width='auto',
+                    align='center'
+                )
+            )
 
-    new_graph=dbc.Row(
-        dbc.Col(
-            dbc.Card(
-                children=[
-                    #compounds
-                    cyto.Cytoscape(
-                        id={
-                            'type':'cytoscape_compound',
-                            'key':temp_n_clicks
-                        },
-                        layout={'name':'dagre'},
-                        elements=compound_network_dict['elements'],
-                        stylesheet=stylesheet,
-                        minZoom=0.3,
-                        maxZoom=5
-                    )
-                ]
-            ),
-            width='auto',
-            align='center'
-        )
-    )
+            temp_children.append(new_graph)
 
 
-    # if (callback_context.triggered[0]['prop_id']=='.'):
-    #     for element in temp_store:
-    #         temp_children.append(new_graph)
-    # elif (callback_context.triggered[0]['prop_id']=='button_add_cyto_compound.n_clicks'):
-    #     temp_children.append(new_graph)
-    temp_children.append(new_graph)
+    #if (callback_context.triggered[0]['prop_id']=='.'):
+
+    elif (callback_context.triggered[0]['prop_id']=='button_add_cyto_compound.n_clicks'):
+        temp_children.append(new_graph)
+
     return [temp_children]
 
 @app.callback(
@@ -171,12 +157,6 @@ def add_cyto_compound(temp_n_clicks,temp_children,temp_store):
     State(component_id='store_cyto_compound',component_property='data')]#,prevent_initial_call=True
 )
 def update_node_selection(temp_tap,temp_elements,temp_store):
-
-    print('\nupdate_node_selection')
-    #print(temp_clicks)
-    print(temp_tap)
-    print(callback_context.triggered[0]['prop_id'])
-    print(callback_context.inputs_list)
 
     if temp_tap is None:
         raise PreventUpdate
@@ -216,35 +196,15 @@ def check_if_selected(temp_dict):
     [Output(component_id='store_cyto_compound',component_property='data')],
     [Input(component_id={'type':'cytoscape_compound','key':ALL},component_property='elements')],
     [State(component_id='store_cyto_compound',component_property='data')]
-    #,prevent_initial_call=True
+    ,prevent_initial_call=True
 )
 def add_selections_to_store(temp_elements,temp_store):
-    '''
-    I don't think that there is an objective "right" way to store data into store object
 
-    for now, for compounds, we will store the id if the corresponding
-    '''
-    '''
-    [{'edges': [{'data': {'id': '4dafba22-5f39-47ec-b080-960e845e8389',
-                      'key': 0,
-
-      'nodes': [{'classes': 'not_selected',
-             'data': {'def': '"Compounds that contain at least carbon atom, '
-                             'excluding isocyanide/cyanide and their '
-                             'non-hydrocarbyl derivatives, thiophosgene, '
-                             'carbon diselenide, carbon monosulfide, carbon '
-                             'disulfide, carbon subsulfide, carbon monoxide, '
-                             'carbon trioxide, Carbon suboxide, and dicarbon '
-                             'monoxide." []',
-                      'id': 'CHEMONTID:0000000',
-
-    }]
-    '''
-
-
+    
 
     print('\nadd_selections_to_store')
     print(callback_context.triggered[0]['prop_id'])
+    #print(temp_elements)
 
     if callback_context.triggered[0]['prop_id']=='.':
         raise PreventUpdate
